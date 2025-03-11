@@ -192,7 +192,8 @@ router.post(
       await user.save();
 
       // Create reset URL
-      const resetUrl = `${req.protocol}://${req.get('host')}/reset-password/${resetToken}`;
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
 
       // Email content
       const message = `You are receiving this email because you (or someone else) has requested a password reset. Please click on the following link to reset your password: \n\n ${resetUrl}`;
@@ -231,6 +232,7 @@ router.post(
     check('password', 'Password must be at least 8 characters').isLength({ min: 8 })
   ],
   async (req, res) => {
+    console.log('Reset token received:', req.params.resetToken);
     // Validate input
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
