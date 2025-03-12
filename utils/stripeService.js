@@ -95,8 +95,19 @@ const confirmPayment = async (paymentIntentId) => {
     
     // Update booking payment status
     await Booking.findByIdAndUpdate(payment.booking, { 
-      paymentStatus: 'paid' 
+      paymentStatus: 'paid',
+      status: 'confirmed' 
     });
+
+    const populatedPayment = await Payment.findById(payment._id)
+      .populate('booking', 'date startTime endTime status paymentStatus')
+      .populate({
+        path: 'booking',
+        populate: {
+          path: 'class',
+          select: 'title type'
+        }
+      });
     
     return payment;
   } catch (error) {
