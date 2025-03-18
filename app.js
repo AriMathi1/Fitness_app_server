@@ -23,7 +23,11 @@ connectDB();
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
 
-app.use('/api/webhook', require('./routes/api/webhook'));
+app.post('/api/webhook/stripe', express.raw({type: 'application/json'}), (req, res) => {
+  const webhookModule = require('./routes/api/webhook');
+  // Call your webhook handler directly with the raw request
+  return webhookModule.stripe(req, res);
+});
 
 // Middleware
 app.use(logger('dev'));
