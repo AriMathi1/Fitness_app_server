@@ -2,28 +2,18 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const Payment = require('../models/Payment');
 const Booking = require('../models/Booking');
 
-/**
- * Create a payment intent
- * @param {string} bookingId - The ID of the booking
- * @param {string} userId - The ID of the user making the payment
- * @param {string} paymentMethod - The payment method (e.g., 'card')
- * @returns {Object} - The payment intent
- */
 const createPaymentIntent = async (bookingId, userId, paymentMethod) => {
   try {
-    // Get booking details to determine amount
     const booking = await Booking.findById(bookingId).populate('class', 'price');
     
     if (!booking) {
       throw new Error('Booking not found');
     }
     
-    // Check if booking belongs to user
     if (booking.user.toString() !== userId) {
       throw new Error('Unauthorized access to booking');
     }
     
-    // Check if there's already a completed payment
     const existingPayment = await Payment.findOne({ 
       booking: bookingId,
       status: 'completed'
@@ -33,9 +23,8 @@ const createPaymentIntent = async (bookingId, userId, paymentMethod) => {
       throw new Error('Payment already completed for this booking');
     }
     
-    // Create payment intent with Stripe
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(booking.class.price * 100), // Convert to cents
+      amount: Math.round(booking.class.price * 100),
       currency: 'usd',
       metadata: {
         bookingId,
@@ -44,7 +33,6 @@ const createPaymentIntent = async (bookingId, userId, paymentMethod) => {
       }
     });
     
-    // Create local payment record
     const payment = new Payment({
       user: userId,
       booking: bookingId,
@@ -67,21 +55,15 @@ const createPaymentIntent = async (bookingId, userId, paymentMethod) => {
   }
 };
 
-/**
- * Confirm payment completion
- * @param {string} paymentIntentId - The Stripe payment intent ID
- * @returns {Object} - The updated payment record
- */
+
 const confirmPayment = async (paymentIntentId) => {
   try {
-    // Get payment details from Stripe
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
     
     if (paymentIntent.status !== 'succeeded') {
       throw new Error(`Payment not successful. Status: ${paymentIntent.status}`);
     }
     
-    // Update local payment record
     const payment = await Payment.findOne({ transactionId: paymentIntentId });
     
     if (!payment) {
@@ -93,7 +75,6 @@ const confirmPayment = async (paymentIntentId) => {
     
     await payment.save();
     
-    // Update booking payment status
     await Booking.findByIdAndUpdate(payment.booking, { 
       paymentStatus: 'paid',
       status: 'confirmed' 
@@ -116,15 +97,9 @@ const confirmPayment = async (paymentIntentId) => {
   }
 };
 
-/**
- * Process refund for a payment
- * @param {string} paymentId - The ID of the payment to refund
- * @param {string} reason - The reason for refund
- * @returns {Object} - The refund details
- */
+
 const processRefund = async (paymentId, reason) => {
   try {
-    // Get payment details
     const payment = await Payment.findById(paymentId);
     
     if (!payment) {
@@ -135,19 +110,16 @@ const processRefund = async (paymentId, reason) => {
       throw new Error('Only completed payments can be refunded');
     }
     
-    // Process refund with Stripe
     const refund = await stripe.refunds.create({
       payment_intent: payment.transactionId,
       reason: 'requested_by_customer'
     });
     
-    // Update payment status
     payment.status = 'refunded';
     payment.notes = reason || 'Refund processed';
     
     await payment.save();
     
-    // Update booking payment status
     await Booking.findByIdAndUpdate(payment.booking, { 
       paymentStatus: 'refunded' 
     });

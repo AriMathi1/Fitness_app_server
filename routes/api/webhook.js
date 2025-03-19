@@ -5,10 +5,6 @@ const Booking = require('../../models/Booking');
 
 const router = express.Router();
 
-/**
- * Handler function for Stripe webhooks
- * Can be called directly from app.js or through the router
- */
 const stripeWebhookHandler = async (req, res) => {
   const signature = req.headers['stripe-signature'];
   
@@ -18,7 +14,7 @@ const stripeWebhookHandler = async (req, res) => {
     console.log('Processing webhook with signature:', signature?.substring(0, 20) + '...');
     
     event = stripe.webhooks.constructEvent(
-      req.body, // This will be the raw body
+      req.body, 
       signature,
       process.env.STRIPE_WEBHOOK_SECRET
     );
@@ -29,14 +25,12 @@ const stripeWebhookHandler = async (req, res) => {
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
   
-  // Handle the event
   switch (event.type) {
     case 'payment_intent.succeeded': {
       const paymentIntent = event.data.object;
       console.log('Processing payment_intent.succeeded:', paymentIntent.id);
       
       try {
-        // Update payment status
         const payment = await Payment.findOne({ 
           transactionId: paymentIntent.id 
         });
@@ -46,7 +40,6 @@ const stripeWebhookHandler = async (req, res) => {
           payment.receiptUrl = paymentIntent.charges?.data[0]?.receipt_url || null;
           await payment.save();
           
-          // Update booking payment status
           await Booking.findByIdAndUpdate(payment.booking, { 
             paymentStatus: 'paid' 
           });
@@ -66,7 +59,6 @@ const stripeWebhookHandler = async (req, res) => {
       console.log('Processing payment_intent.payment_failed:', paymentIntent.id);
       
       try {
-        // Update payment status
         const payment = await Payment.findOne({ 
           transactionId: paymentIntent.id 
         });
@@ -91,7 +83,6 @@ const stripeWebhookHandler = async (req, res) => {
       console.log('Processing charge.refunded for payment intent:', charge.payment_intent);
       
       try {
-        // Update payment status for this refund
         const payment = await Payment.findOne({
           transactionId: charge.payment_intent
         });
@@ -101,7 +92,6 @@ const stripeWebhookHandler = async (req, res) => {
           payment.notes = `Refunded via Stripe on ${new Date().toISOString()}`;
           await payment.save();
           
-          // Update booking payment status
           await Booking.findByIdAndUpdate(payment.booking, { 
             paymentStatus: 'refunded' 
           });
@@ -117,18 +107,13 @@ const stripeWebhookHandler = async (req, res) => {
     }
     
     default:
-      // Unexpected event type
       console.log(`Unhandled event type ${event.type}`);
   }
   
-  // Return a 200 response to acknowledge receipt of the event
   res.status(200).json({received: true});
 };
 
-// This route is kept for backward compatibility but may not be used
-// since we're registering the direct handler in app.js
 router.post('/stripe', express.raw({type: 'application/json'}), stripeWebhookHandler);
 
-// Export both router and the handler function
 module.exports = router;
 module.exports.stripe = stripeWebhookHandler;
