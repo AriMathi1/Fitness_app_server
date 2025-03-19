@@ -6,11 +6,6 @@ const Booking = require('../../models/Booking');
 const Class = require('../../models/Class');
 const router = express.Router();
 
-/**
- * @route   POST /api/bookings
- * @desc    Create a new booking
- * @access  Private
- */
 router.post('/', [
   auth,
   [
@@ -28,21 +23,17 @@ router.post('/', [
   try {
     const { classId, date, startTime, endTime, notes } = req.body;
 
-    // Find the class
     const classDetails = await Class.findById(classId);
     if (!classDetails) {
       return res.status(404).json({ msg: 'Class not found' });
     }
 
-    // Check if class is active
     if (!classDetails.isActive) {
       return res.status(400).json({ msg: 'This class is not currently available for booking' });
     }
 
-    // Get trainer info
     const trainerId = classDetails.trainer;
 
-    // Create a new booking
     const newBooking = new Booking({
       user: req.user.id,
       class: classId,
@@ -55,7 +46,6 @@ router.post('/', [
 
     const booking = await newBooking.save();
 
-    // Fetch full booking details with populated references
     const populatedBooking = await Booking.findById(booking._id)
       .populate('class', 'title description type duration')
       .populate('trainer', 'name')
@@ -68,24 +58,16 @@ router.post('/', [
   }
 });
 
-/**
- * @route   GET /api/bookings
- * @desc    Get all bookings for the current user
- * @access  Private
- */
 router.get('/', auth, async (req, res) => {
   try {
     const { status, upcoming } = req.query;
     
-    // Base query with user ID
     let query = { user: req.user.id };
     
-    // Add status filter if provided
     if (status) {
       query.status = status;
     }
     
-    // Add date filter for upcoming bookings
     if (upcoming === 'true') {
       query.date = { $gte: new Date() };
     }
@@ -102,24 +84,16 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-/**
- * @route   GET /api/bookings/trainer
- * @desc    Get all bookings for the current trainer
- * @access  Private (trainers only)
- */
 router.get('/trainer', [auth, checkTrainerRole], async (req, res) => {
   try {
     const { status, upcoming } = req.query;
     
-    // Base query with trainer ID
     let query = { trainer: req.user.id };
     
-    // Add status filter if provided
     if (status) {
       query.status = status;
     }
     
-    // Add date filter for upcoming bookings
     if (upcoming === 'true') {
       query.date = { $gte: new Date() };
     }
@@ -136,11 +110,6 @@ router.get('/trainer', [auth, checkTrainerRole], async (req, res) => {
   }
 });
 
-/**
- * @route   GET /api/bookings/:id
- * @desc    Get booking by ID
- * @access  Private
- */
 router.get('/:id', auth, async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id)
@@ -152,7 +121,6 @@ router.get('/:id', auth, async (req, res) => {
       return res.status(404).json({ msg: 'Booking not found' });
     }
 
-    // Check if the user owns this booking or is the trainer
     if (booking.user._id.toString() !== req.user.id && 
         booking.trainer._id.toString() !== req.user.id) {
       return res.status(401).json({ msg: 'Not authorized to access this booking' });
@@ -168,11 +136,6 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
-/**
- * @route   PUT /api/bookings/:id
- * @desc    Update booking status (cancel)
- * @access  Private
- */
 router.put('/:id', [
   auth,
   [
@@ -185,7 +148,6 @@ router.put('/:id', [
   }
 
   try {
-    // Find booking
     let booking = await Booking.findById(req.params.id)
       .populate('class', 'title')
       .populate('trainer', 'name')
@@ -195,20 +157,16 @@ router.put('/:id', [
       return res.status(404).json({ msg: 'Booking not found' });
     }
 
-    // Check if the user owns this booking
     if (booking.user._id.toString() !== req.user.id) {
       return res.status(401).json({ msg: 'Not authorized to update this booking' });
     }
 
-    // Check if booking is already cancelled
     if (booking.status === 'cancelled') {
       return res.status(400).json({ msg: 'This booking is already cancelled' });
     }
 
-    // Update status to cancelled
     booking.status = 'cancelled';
     
-    // Save the updated booking
     await booking.save();
 
     res.json(booking);
@@ -222,12 +180,6 @@ router.put('/:id', [
 });
 
 
-
-/**
- * @route   PUT /api/bookings/trainer/:id
- * @desc    Trainer accepts or declines booking
- * @access  Private (trainers only)
- */
 router.put('/trainer/:id', [
   auth,
   checkTrainerRole,
@@ -241,7 +193,6 @@ router.put('/trainer/:id', [
   }
 
   try {
-    // Find booking
     let booking = await Booking.findById(req.params.id)
       .populate('class', 'title')
       .populate('user', 'name');
@@ -250,19 +201,16 @@ router.put('/trainer/:id', [
       return res.status(404).json({ msg: 'Booking not found' });
     }
 
-    // Check if trainer owns this booking
     if (booking.trainer.toString() !== req.user.id) {
       return res.status(401).json({ msg: 'Not authorized to update this booking' });
     }
 
-    // Check if booking is already processed
     if (booking.status !== 'pending') {
       return res.status(400).json({ 
         msg: `This booking is already ${booking.status}` 
       });
     }
 
-    // Update booking status
     booking.status = req.body.status;
     if (req.body.notes) booking.notes = req.body.notes;
 

@@ -50,7 +50,6 @@ const BookingSchema = new mongoose.Schema({
   }
 });
 
-// Create indexes for efficient querying
 BookingSchema.index({ user: 1, date: 1 });
 BookingSchema.index({ trainer: 1, date: 1 });
 BookingSchema.index({ class: 1 });

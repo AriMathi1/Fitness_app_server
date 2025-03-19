@@ -59,7 +59,6 @@ const ClassSchema = new mongoose.Schema({
   }
 });
 
-// Create index for efficient filtering
 ClassSchema.index({ type: 1, isActive: 1 });
 ClassSchema.index({ trainer: 1 });
 

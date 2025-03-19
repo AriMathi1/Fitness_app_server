@@ -1,8 +1,3 @@
-// Place in models/User.js
-// If you already have a User model, merge the new fields we created
-// with your existing model structure
-
-// Place in models/Review.js
 const mongoose = require('mongoose');
 
 const ReviewSchema = new mongoose.Schema({
@@ -44,13 +39,11 @@ const ReviewSchema = new mongoose.Schema({
   }
 });
 
-// Middleware to update the updatedAt field on save
 ReviewSchema.pre('save', function(next) {
   this.updatedAt = Date.now();
   next();
 });
 
-// Compound index to ensure a client can only review a trainer once
 ReviewSchema.index({ trainerId: 1, clientId: 1 }, { unique: true });
 
 module.exports = mongoose.model('Review', ReviewSchema);

@@ -8,11 +8,6 @@ const { createPaymentIntent, confirmPayment, processRefund } = require('../../ut
 
 const router = express.Router();
 
-/**
- * @route   POST /api/payments/create-intent
- * @desc    Create a payment intent for a booking
- * @access  Private
- */
 router.post('/create-intent', [
   auth,
   [
@@ -41,11 +36,6 @@ router.post('/create-intent', [
   }
 });
 
-/**
- * @route   POST /api/payments/confirm
- * @desc    Confirm a payment after successful processing
- * @access  Private
- */
 router.post('/confirm', [
   auth,
   [
@@ -69,11 +59,6 @@ router.post('/confirm', [
   }
 });
 
-/**
- * @route   POST /api/payments/refund
- * @desc    Process a refund for a payment
- * @access  Private
- */
 router.post('/refund', [
   auth,
   [
@@ -88,7 +73,6 @@ router.post('/refund', [
   try {
     const { paymentId, reason } = req.body;
     
-    // Verify that the payment belongs to the user
     const payment = await Payment.findById(paymentId);
     
     if (!payment) {
@@ -108,11 +92,6 @@ router.post('/refund', [
   }
 });
 
-/**
- * @route   GET /api/payments/history
- * @desc    Get payment history for the current user
- * @access  Private
- */
 router.get('/history', auth, async (req, res) => {
   try {
     const payments = await Payment.find({ user: req.user.id })
@@ -133,11 +112,6 @@ router.get('/history', auth, async (req, res) => {
   }
 });
 
-/**
- * @route   GET /api/payments/:id
- * @desc    Get details of a specific payment
- * @access  Private
- */
 router.get('/:id', auth, async (req, res) => {
   try {
     const payment = await Payment.findById(req.params.id)
@@ -161,7 +135,6 @@ router.get('/:id', auth, async (req, res) => {
       return res.status(404).json({ msg: 'Payment not found' });
     }
     
-    // Check if the user owns this payment
     if (payment.user.toString() !== req.user.id) {
       return res.status(401).json({ msg: 'Not authorized to access this payment' });
     }

@@ -20,7 +20,6 @@ const UserSchema = new mongoose.Schema({
     required: true
   },
   profile: {
-    // Shared profile fields
     availability: [{
       day: {
         type: String,
@@ -30,7 +29,6 @@ const UserSchema = new mongoose.Schema({
       startTime: {
         type: String,
         required: true,
-        // Validation for time format (HH:MM)
         match: /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/
       },
       endTime: {
@@ -40,7 +38,6 @@ const UserSchema = new mongoose.Schema({
       }
     }],
     
-    // Client-specific fields
     fitnessPreferences: {
       type: [String],
       default: []
@@ -54,7 +51,6 @@ const UserSchema = new mongoose.Schema({
       ref: 'User'
     }],
     
-    // Trainer-specific fields
     qualifications: {
       type: [String],
       default: []
@@ -92,11 +88,9 @@ const UserSchema = new mongoose.Schema({
       default: 0
     }
   },
-  // Fields for password reset
   resetPasswordToken: String,
   resetPasswordExpire: Date,
   
-  // Account status
   isActive: {
     type: Boolean,
     default: true
@@ -115,7 +109,6 @@ const UserSchema = new mongoose.Schema({
   }
 });
 
-// Middleware to update the updatedAt field on save
 UserSchema.pre('save', function(next) {
   this.updatedAt = Date.now();
   next();

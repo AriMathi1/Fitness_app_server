@@ -43,7 +43,6 @@ const PaymentSchema = new mongoose.Schema({
   }
 });
 
-// Create indexes for efficient querying
 PaymentSchema.index({ user: 1 });
 PaymentSchema.index({ booking: 1 });
 PaymentSchema.index({ status: 1 });

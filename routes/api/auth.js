@@ -1,4 +1,3 @@
-// Required packages
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -10,9 +9,6 @@ const sendEmail = require('../../utils/sendEmail');
 
 const router = express.Router();
 
-// @route   POST /api/auth/register
-// @desc    Register user (client or trainer)
-// @access  Public
 router.post(
   '/register',
   [
@@ -22,7 +18,6 @@ router.post(
     check('userType', 'User type is required').isIn(['client', 'trainer'])
   ],
   async (req, res) => {
-    // Validate input
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
@@ -31,29 +26,24 @@ router.post(
     const { name, email, password, userType, fitnessPreferences, fitnessGoals, availability } = req.body;
 
     try {
-      // Check if user already exists
       let user = await User.findOne({ email });
       if (user) {
         return res.status(400).json({ errors: [{ msg: 'User already exists' }] });
       }
 
-      // Create user object based on userType
       user = new User({
         name,
         email,
         password,
         userType,
         profile: {
-          // Shared profile fields
           availability: availability || [],
           
-          // Client-specific fields
           ...(userType === 'client' && {
             fitnessPreferences: fitnessPreferences || [],
             fitnessGoals: fitnessGoals || []
           }),
           
-          // Trainer-specific fields
           ...(userType === 'trainer' && {
             qualifications: [],
             specialties: [],
@@ -63,14 +53,11 @@ router.post(
         }
       });
 
-      // Encrypt password
       const salt = await bcrypt.genSalt(10);
       user.password = await bcrypt.hash(password, salt);
 
-      // Save user to database
       await user.save();
 
-      // Generate JWT
       const payload = {
         user: {
           id: user.id,
@@ -95,9 +82,6 @@ router.post(
   }
 );
 
-// @route   POST /api/auth/login
-// @desc    Authenticate user & get token
-// @access  Public
 router.post(
   '/login',
   [
@@ -105,7 +89,6 @@ router.post(
     check('password', 'Password is required').exists()
   ],
   async (req, res) => {
-    // Validate input
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
@@ -114,19 +97,16 @@ router.post(
     const { email, password } = req.body;
 
     try {
-      // Check if user exists
       let user = await User.findOne({ email });
       if (!user) {
         return res.status(400).json({ errors: [{ msg: 'Invalid credentials' }] });
       }
 
-      // Verify password
       const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) {
         return res.status(400).json({ errors: [{ msg: 'Invalid credentials' }] });
       }
 
-      // Generate JWT
       const payload = {
         user: {
           id: user.id,
@@ -159,9 +139,6 @@ router.post(
   }
 );
 
-// @route   POST /api/auth/forgot-password
-// @desc    Send password reset email
-// @access  Public
 router.post(
   '/forgot-password',
   [
@@ -182,20 +159,15 @@ router.post(
         return res.status(404).json({ msg: 'User not found' });
       }
 
-      // Generate reset token
       const resetToken = crypto.randomBytes(20).toString('hex');
 
-      // Set token expiration (1 hour)
       user.resetPasswordToken = resetToken;
       user.resetPasswordExpire = Date.now() + 3600000;
 
       await user.save();
-
-      // Create reset URL
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
       const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
 
-      // Email content
       const message = `You are receiving this email because you (or someone else) has requested a password reset. Please click on the following link to reset your password: \n\n ${resetUrl}`;
 
       await sendEmail({
@@ -223,9 +195,6 @@ router.post(
   }
 );
 
-// @route   POST /api/auth/reset-password/:resetToken
-// @desc    Reset password
-// @access  Public
 router.post(
   '/reset-password/:resetToken',
   [
@@ -233,18 +202,15 @@ router.post(
   ],
   async (req, res) => {
     console.log('Reset token received:', req.params.resetToken);
-    // Validate input
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    // Get token from params
     const resetToken = req.params.resetToken;
     const { password } = req.body;
 
     try {
-      // Find user with valid token
       const user = await User.findOne({
         resetPasswordToken: resetToken,
         resetPasswordExpire: { $gt: Date.now() }
@@ -253,8 +219,6 @@ router.post(
       if (!user) {
         return res.status(400).json({ msg: 'Invalid or expired token' });
       }
-
-      // Update password
       const salt = await bcrypt.genSalt(10);
       user.password = await bcrypt.hash(password, salt);
       user.resetPasswordToken = undefined;
@@ -271,9 +235,6 @@ router.post(
   }
 );
 
-// @route   GET /api/auth/me
-// @desc    Get current user
-// @access  Private
 router.get('/me', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('-password');

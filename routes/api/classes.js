@@ -7,24 +7,16 @@ const User = require('../../models/User');
 
 const router = express.Router();
 
-/**
- * @route   GET /api/classes
- * @desc    Get all classes with filtering options
- * @access  Public
- */
 router.get('/', async (req, res) => {
   try {
     const { type, location, trainerId } = req.query;
 
-    // Build filter object
-    let filter = { isActive: true }; // Only show active classes by default
+    let filter = { isActive: true };
 
-    // Add filters if provided
     if (type) filter.type = type;
     if (location) filter.location = location;
     if (trainerId) filter.trainer = trainerId;
 
-    // Get classes matching the filter
     const classes = await Class.find(filter)
       .populate('trainer', 'name profile.rating')
       .sort({ createdAt: -1 });
@@ -36,11 +28,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-/**
- * @route   GET /api/classes/:id
- * @desc    Get class by ID
- * @access  Public
- */
 router.get('/:id', async (req, res) => {
   try {
     const classItem = await Class.findById(req.params.id)
@@ -60,11 +47,6 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-/**
- * @route   POST /api/classes
- * @desc    Create a class
- * @access  Private (trainers only)
- */
 router.post('/', [
   auth,
   checkTrainerRole,
@@ -90,7 +72,6 @@ router.post('/', [
   }
 
   try {
-    // Create new class
     const newClass = new Class({
       trainer: req.user.id,
       title: req.body.title,
@@ -102,7 +83,6 @@ router.post('/', [
       location: req.body.location || 'Virtual'
     });
 
-    // Save class
     const classItem = await newClass.save();
     res.json(classItem);
   } catch (err) {
@@ -111,11 +91,6 @@ router.post('/', [
   }
 });
 
-/**
- * @route   PUT /api/classes/:id
- * @desc    Update a class
- * @access  Private (trainer only - and only their own classes)
- */
 router.put('/:id', [
   auth,
   checkTrainerRole,
@@ -141,23 +116,18 @@ router.put('/:id', [
   }
 
   try {
-    // Find class
     let classItem = await Class.findById(req.params.id);
 
-    // Check if class exists
     if (!classItem) {
       return res.status(404).json({ msg: 'Class not found' });
     }
 
-    // Check if the trainer owns this class
     if (classItem.trainer.toString() !== req.user.id) {
       return res.status(401).json({ msg: 'Not authorized to update this class' });
     }
 
-    // Fields to update
     const updateFields = {};
     
-    // Only update fields that are sent in the request
     const allowedFields = [
       'title', 'description', 'type', 'duration', 
       'price', 'schedule', 'location', 'isActive'
@@ -169,7 +139,6 @@ router.put('/:id', [
       }
     });
 
-    // Update class
     classItem = await Class.findByIdAndUpdate(
       req.params.id,
       { $set: updateFields },
@@ -186,22 +155,14 @@ router.put('/:id', [
   }
 });
 
-/**
- * @route   DELETE /api/classes/:id
- * @desc    Delete a class
- * @access  Private (trainer only - and only their own classes)
- */
 router.delete('/:id', [auth, checkTrainerRole], async (req, res) => {
   try {
-    // Find class
     const classItem = await Class.findById(req.params.id);
 
-    // Check if class exists
     if (!classItem) {
       return res.status(404).json({ msg: 'Class not found' });
     }
 
-    // Check if the trainer owns this class
     if (classItem.trainer.toString() !== req.user.id) {
       return res.status(401).json({ msg: 'Not authorized to delete this class' });
     }
@@ -217,11 +178,6 @@ router.delete('/:id', [auth, checkTrainerRole], async (req, res) => {
   }
 });
 
-/**
- * @route   GET /api/classes/trainer/:trainerId
- * @desc    Get all classes by a specific trainer
- * @access  Public
- */
 router.get('/trainer/:trainerId', async (req, res) => {
   try {
     const classes = await Class.find({ 
